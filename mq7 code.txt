@@ -1,0 +1,65 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include "DHT.h"
+
+#define DHTPIN 4       // Pin connected to DHT11 sensor
+#define DHTTYPE DHT11  // DHT 11
+#define MQ7PIN A0      // Pin connected to MQ-7 sensor
+#define BAD_THRESHOLD 200 // Threshold for bad air quality
+#define TEMP_THRESHOLD 30 // Temperature threshold for alert
+#define DISPLAY_DELAY 5000 // Delay for displaying air quality in milliseconds
+
+DHT dht(DHTPIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x3F, 16, 2); // Set the LCD address to 0x27 for a 16 chars and 2 line display
+unsigned long lastDisplayTime = 0;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(MQ7PIN, INPUT);
+  dht.begin();
+  lcd.init();
+  lcd.backlight();
+}
+
+void loop() {
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature();
+  float airQuality = analogRead(MQ7PIN);
+
+  lcd.setCursor(0, 0);
+  lcd.print("Temperature: ");
+  lcd.print(temperature);
+  lcd.print("C");
+  
+  lcd.setCursor(0, 1);
+  lcd.print("Humidity: ");
+  lcd.print(humidity);
+  lcd.print("%  ");
+
+  if (millis() - lastDisplayTime >= DISPLAY_DELAY) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Air Quality: ");
+    lcd.print(airQuality);
+    
+    if (airQuality > BAD_THRESHOLD) {
+      lcd.setCursor(0, 1);
+      lcd.print("Air: Bad");
+    } else {
+      lcd.setCursor(0, 1);
+      lcd.print("Air: Good");
+    }
+
+    Serial.print("Air Quality: ");
+    Serial.println(airQuality);
+    
+    lastDisplayTime = millis();
+  }
+
+  if (temperature > TEMP_THRESHOLD) {
+    Serial.println("High Temperature Alert");
+    delay(2000);
+  }
+
+  delay(1000);
+}
